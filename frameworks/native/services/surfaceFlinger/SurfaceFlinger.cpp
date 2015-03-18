@@ -65,6 +65,8 @@
 #include "Layer.h"
 #include "LayerDim.h"
 #include "SurfaceFlinger.h"
+#include <../../../../hardware/rk29/libgralloc_ump/gralloc_priv.h>
+#include "../../../../hardware/rk29/ijkyuv/include/libyuv.h"
 
 #include "DisplayHardware/FramebufferSurface.h"
 #include "DisplayHardware/HWComposer.h"
@@ -1787,6 +1789,94 @@ void SurfaceFlinger::doDisplayComposition(const sp<const DisplayDevice>& hw,
     hw->swapBuffers(getHwComposer());
 }
 
+void SurfaceFlinger::dumpABGRImg(uint8_t *dst, int dst_stride_abgr, int width, int height, int index1, int index2)
+{
+    static int frm=0;
+    frm++;
+
+    if (index1 >= 1)
+        frm -= 1;
+
+    if(/*frm==50*/1)
+    {
+        stIMG_FILE st;
+        FILE *pFile;
+        char name[64];
+
+        snprintf(name, 64, "/data/dump/Frame200_org_ARGB8888_%d-%d.img", index1, index2);
+        pFile=fopen(name,"w");
+
+        memset(&st, sizeof (stIMG_FILE), 0);
+        st.m_pFile = pFile;
+        st.m_Fmt = eIMG_PIXFMT_ARGB8888;
+        st.m_W = width;
+        st.m_H = height;
+        st.m_PitchInByteY = dst_stride_abgr * 4;
+        st.m_PitchInByteUV= dst_stride_abgr * 4;
+        st.m_nPalette     = 0;
+        st.m_pPalette     = NULL;
+
+        Mem2ImgProc(&st, dst, NULL, NULL, dst_stride_abgr * 4 *height, 0, 0);
+
+        fclose(pFile);
+    }
+}
+
+void SurfaceFlinger::do3DInterleaveEVIS(
+	const sp<const DisplayDevice>& hw, const sp<Layer>& layer, const Region& clip)
+{
+    android_native_buffer_t * framebuffer = NULL;
+    private_handle_t * framebuffer_handle = NULL;
+    sp<SurfaceFlingerConsumer> consumer = NULL;
+    sp<GraphicBuffer> gb = NULL;
+    int frame_base = NULL;
+    void * base = NULL;
+    Rect displayFrame;
+
+    if (layer->getFormat() == 0x21) {
+        hw->compositionComplete(); //call glFinish to let GPU render to framebuffer
+        framebuffer = (android_native_buffer_t *)(hw->getRenderBuffer());
+        if (framebuffer)
+            framebuffer_handle = (private_handle_t *) (framebuffer->handle);
+
+        //dumpABGRImg((uint8_t *) framebuffer_handle->base,
+		//framebuffer_handle->stride, framebuffer_handle->width, framebuffer_handle->height, i, 1);
+
+        displayFrame =  layer->getDisplayFrame();
+        frame_base = framebuffer_handle->base
+			+ (displayFrame.left + displayFrame.top * framebuffer->width) * 4;
+
+        consumer = layer->getSurfaceFlingerConsumer();
+        gb = consumer->getCurrentBufferEVIS();
+        if (gb == NULL) {
+           gb = new GraphicBuffer(displayFrame.getWidth(), displayFrame.getHeight(),
+                      PIXEL_FORMAT_BGRA_8888, GraphicBuffer::USAGE_SW_WRITE_RARELY);
+           consumer->setCurrentBufferEVIS(gb);
+        }
+        gb->lock(GraphicBuffer::USAGE_SW_WRITE_RARELY, &base);
+#if 1
+        libyuv::ABGRToABGR((uint8_t *) frame_base,
+			displayFrame.getWidth() * 4, (uint8_t *)base,
+			displayFrame.getWidth() * 4, displayFrame.getWidth(), displayFrame.getHeight());
+#else //debug
+        char layername[100] ;
+        sprintf(layername,"/data/dmlayer0_480_800_%d.bin", (i % 5) + 1);
+		ALOGE("bind texture: %s", layername);
+
+        FILE *pFile;
+        pFile=fopen(layername, "rb");
+        fseek(pFile, 264 * 480 * 4L, 0);
+        fread(base, /*framebuffer->width * framebuffer->height * 4*/480 * 270 * 4, 1, pFile);
+        fclose(pFile);
+#endif
+        gb->unlock();
+        consumer->bindTextureImageEVIS();
+
+        layer->setLayerTexture(hw, clip);
+    }
+
+}
+
 void SurfaceFlinger::doComposeSurfaces(const sp<const DisplayDevice>& hw, const Region& dirty)
 {
     RenderEngine& engine(getRenderEngine());
@@ -1890,6 +1980,7 @@ void SurfaceFlinger::doComposeSurfaces(const sp<const DisplayDevice>& hw, const 
                         if (!wfdOptimize)
 			{
 			   layer->draw(hw, clip);
+                              do3DInterleaveEVIS(hw, layer, clip);
 			}
                         break;
                     }

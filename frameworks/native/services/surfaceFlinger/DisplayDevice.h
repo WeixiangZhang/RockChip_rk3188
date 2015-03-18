@@ -132,6 +132,8 @@ public:
 
     void swapBuffers(HWComposer& hwc) const;
     void hwcSwapBuffers() const;
+    void* getRenderBuffer() const;
+
     status_t compositionComplete() const;
 
     // called after h/w composer has completed its set() call

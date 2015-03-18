@@ -165,6 +165,8 @@ public:
 
     // getCurrentBuffer returns the buffer associated with the current image.
     sp<GraphicBuffer> getCurrentBuffer() const;
+    sp<GraphicBuffer> getCurrentBufferEVIS();
+    void setCurrentBufferEVIS(sp<GraphicBuffer>& gb);
 
     // getCurrentTextureTarget returns the texture target of the current
     // texture as returned by updateTexImage().
@@ -191,6 +193,7 @@ public:
     // set the name of the GLConsumer that will be used to identify it in
     // log messages.
     void setName(const String8& name);
+    void setTextureName(uint32_t texName);
 
     // These functions call the corresponding BufferQueue implementation
     // so the refactoring can proceed smoothly
@@ -224,6 +227,8 @@ public:
     // the texture target and populated with the image contents that were
     // current at the time of the last call to detachFromContext.
     status_t attachToContext(uint32_t tex);
+
+    void bindTextureImageEVIS();
 
 protected:
 
@@ -360,6 +365,7 @@ private:
     // be bound when updateTexImage is called. It is set at construction time
     // and can be changed with a call to attachToContext.
     uint32_t mTexName;
+    uint32_t mTexName2;
 
     // mUseFenceSync indicates whether creation of the EGL_KHR_fence_sync
     // extension should be used to prevent buffers from being dequeued before
@@ -418,6 +424,7 @@ private:
     // be replaced if the requested buffer usage or geometry differs from that
     // of the buffer allocated to a slot.
     EglSlot mEglSlots[BufferQueue::NUM_BUFFER_SLOTS];
+    EglSlot mEglSlotsEVIS[BufferQueue::NUM_BUFFER_SLOTS];
 
     // mCurrentTexture is the buffer slot index of the buffer that is currently
     // bound to the OpenGL texture. It is initialized to INVALID_BUFFER_SLOT,

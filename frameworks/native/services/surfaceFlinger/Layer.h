@@ -144,7 +144,7 @@ public:
     sp<IBinder> getHandle();
     sp<IGraphicBufferProducer> getBufferQueue() const;
     const String8& getName() const;
-
+    void setLayerTexture(const sp<const DisplayDevice>& hw, const Region& clip);
     // -----------------------------------------------------------------------
     // Virtuals
 
@@ -268,12 +268,14 @@ public:
      * to the layer's size.
      */
     Rect getContentCrop() const;
+    inline Rect getDisplayFrame() {return mDisplayFrame;}
 
     // -----------------------------------------------------------------------
 
     void clearWithOpenGL(const sp<const DisplayDevice>& hw, const Region& clip) const;
     void setFiltering(bool filtering);
     bool getFiltering() const;
+    PixelFormat getFormat() const;
 
     // only for debugging
     inline const sp<GraphicBuffer>& getActiveBuffer() const { return mActiveBuffer; }
@@ -282,6 +284,7 @@ public:
     inline  const State&    getCurrentState() const { return mCurrentState; }
     inline  State&          getCurrentState()       { return mCurrentState; }
 
+    sp<SurfaceFlingerConsumer> getSurfaceFlingerConsumer();
 
     /* always call base class first */
     void dump(String8& result, Colorizer& colorizer) const;
@@ -335,6 +338,7 @@ private:
     sp<SurfaceFlingerConsumer> mSurfaceFlingerConsumer;
     sp<BufferQueue> mBufferQueue;
     uint32_t mTextureName;
+    uint32_t mTextureName2;
     bool mPremultipliedAlpha;
     String8 mName;
     mutable bool mDebug;
@@ -353,6 +357,7 @@ private:
     // main thread
     sp<GraphicBuffer> mActiveBuffer;
     Rect mCurrentCrop;
+    Rect mDisplayFrame;
     uint32_t mCurrentTransform;
     uint32_t mCurrentScalingMode;
     bool mCurrentOpacity;

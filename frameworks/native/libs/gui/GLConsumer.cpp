@@ -496,6 +496,62 @@ status_t GLConsumer::bindTextureImageLocked() {
 
 }
 
+void GLConsumer::bindTextureImageEVIS() {
+    Mutex::Autolock lock(mMutex);
+    sp<GraphicBuffer> buffer = mSlotsEVIS[mCurrentTexture].mGraphicBuffer;
+    GLint error;
+    EGLImageKHR image;
+
+    if (buffer == NULL)
+        return;
+
+    Rect crop(buffer->width, buffer->height);
+
+#if 1
+    glBindTexture(mTexTarget, mTexName2);
+    if (mEglSlotsEVIS[mCurrentTexture].mEglImage == EGL_NO_IMAGE_KHR) {
+        image = createImage(mEglDisplay, buffer, crop);
+        if (image == EGL_NO_IMAGE_KHR) {
+            ST_LOGW("bindTextureImageEVIS: unable to createImage");
+            return;
+        }
+
+	mEglSlotsEVIS[mCurrentTexture].mEglImage = image;
+	mEglSlotsEVIS[mCurrentTexture].mCropRect = crop;
+    }
+
+    glEGLImageTargetTexture2DOES(mTexTarget, (GLeglImageOES)(mEglSlotsEVIS[mCurrentTexture].mEglImage));
+    while ((error = glGetError()) != GL_NO_ERROR) {
+        ST_LOGE("bindTextureImageEVIS: error binding external texture image");
+    }
+#else
+    if (buffer != NULL) {
+        glBindTexture(mTexTarget, mTexName2);
+        image = createImage(mEglDisplay, buffer, crop);
+        if (image == EGL_NO_IMAGE_KHR) {
+            ST_LOGW("bindTextureImageEVIS: unable to createImage");
+            return;
+        }
+
+        mEglSlotsEVIS[mCurrentTexture].mEglImage = image;
+        mEglSlotsEVIS[mCurrentTexture].mCropRect = crop;
+
+        //eglDestroyImageKHR(mEglDisplay, mEglSlots[mCurrentTexture].mEglImage);
+
+        glEGLImageTargetTexture2DOES(mTexTarget, (GLeglImageOES)(mEglSlotsEVIS[mCurrentTexture].mEglImage));
+        while ((error = glGetError()) != GL_NO_ERROR) {
+                ST_LOGE("bindTextureImageEVIS: error binding external texture image");
+        }
+
+        ALOGE("bindTextureImageEVIS mCurrentTexture = %d, w = %d, h = %d, target = %d, name = %d",
+                mCurrentTexture, buffer->getWidth(), buffer->getHeight(), mTexTarget, mTexName2);
+
+	//doGLFenceWaitLocked();
+    }
+#endif
+
+}
+
 status_t GLConsumer::checkAndUpdateEglStateLocked(bool contextCheck) {
     EGLDisplay dpy = eglGetCurrentDisplay();
     EGLContext ctx = eglGetCurrentContext();
@@ -939,6 +995,16 @@ sp<GraphicBuffer> GLConsumer::getCurrentBuffer() const {
     return mCurrentTextureBuf;
 }
 
+sp<GraphicBuffer> GLConsumer::getCurrentBufferEVIS() {
+    Mutex::Autolock lock(mMutex);
+    return mSlotsEVIS[mCurrentTexture].mGraphicBuffer;
+}
+
+void GLConsumer::setCurrentBufferEVIS(sp<GraphicBuffer>& gb) {
+    Mutex::Autolock lock(mMutex);
+    mSlotsEVIS[mCurrentTexture].mGraphicBuffer = gb;
+}
+
 Rect GLConsumer::getCurrentCrop() const {
     Mutex::Autolock lock(mMutex);
 
@@ -1079,6 +1145,12 @@ void GLConsumer::setName(const String8& name) {
     Mutex::Autolock _l(mMutex);
     mName = name;
     mConsumer->setConsumerName(name);
+}
+
+void GLConsumer::setTextureName(uint32_t texName)
+{
+    Mutex::Autolock _l(mMutex);
+    mTexName2 = texName;
 }
 
 status_t GLConsumer::setDefaultBufferFormat(uint32_t defaultFormat) {

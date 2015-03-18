@@ -49,6 +49,8 @@ using namespace android;
  *
  */
 static PFNEGLRENDERBUFFERMODIFYEDANDROIDPROC _eglRenderBufferModifiedANDROID;
+static PFNEGLGETRENDERBUFFERANDROIDPROC _eglGetRenderBufferANDROID;
+
 
 DisplayDevice::DisplayDevice(
         const sp<SurfaceFlinger>& flinger,
@@ -134,6 +136,9 @@ DisplayDevice::DisplayDevice(
     setProjection(DisplayState::eOrientationDefault, mViewport, mFrame);
 	_eglRenderBufferModifiedANDROID = (PFNEGLRENDERBUFFERMODIFYEDANDROIDPROC)
                                     eglGetProcAddress("eglRenderBufferModifiedANDROID");
+
+	_eglGetRenderBufferANDROID = (PFNEGLGETRENDERBUFFERANDROIDPROC)
+                                    eglGetProcAddress("eglGetRenderBufferANDROID");
 }
 
 DisplayDevice::~DisplayDevice() {
@@ -210,6 +215,11 @@ void DisplayDevice::hwcSwapBuffers() const
 {
     _eglRenderBufferModifiedANDROID(mDisplay, mSurface);
     eglSwapBuffers(mDisplay, mSurface);
+}
+
+void *DisplayDevice::getRenderBuffer() const
+{
+    return (void *)_eglGetRenderBufferANDROID(mDisplay, mSurface);
 }
 
 status_t DisplayDevice::beginFrame() const {

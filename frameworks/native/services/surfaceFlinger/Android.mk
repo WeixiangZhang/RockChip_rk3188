@@ -91,6 +91,9 @@ endif
 endif
 
 
+LOCAL_STATIC_LIBRARIES := libyuv_static
+LOCAL_C_INCLUDES += hardware/rk29/ijkyuv/include
+
 LOCAL_CFLAGS += -fvisibility=hidden
 
 LOCAL_SHARED_LIBRARIES := \

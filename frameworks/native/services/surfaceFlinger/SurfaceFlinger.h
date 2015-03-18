@@ -155,6 +155,9 @@ public:
     bool orientationSwap() const { return mHardwareOrientation % 2; }
     bool ReleaseOldBuffer(void);    //rk : for lcdc composer
 
+    void do3DInterleaveEVIS(const sp<const DisplayDevice>& hw, const sp<Layer>& layer, const Region& clip);
+
+
 private:
     friend class Client;
     friend class DisplayEventConnection;
@@ -397,6 +400,8 @@ private:
 
     void postFramebuffer();
     void drawWormhole(const sp<const DisplayDevice>& hw, const Region& region) const;
+
+    void dumpABGRImg(uint8_t *dst, int dst_stride_abgr, int width, int height, int index1, int index2);
 
     /* ------------------------------------------------------------------------
      * Display management

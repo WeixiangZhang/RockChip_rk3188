@@ -122,6 +122,10 @@ void Layer::onFirstRef() {
     mSurfaceFlingerConsumer->setFrameAvailableListener(this);
     mSurfaceFlingerConsumer->setName(mName);
 
+    mFlinger->getRenderEngine().genTextures(1, &mTextureName2);
+    mSurfaceFlingerConsumer->setTextureName(mTextureName2);
+
+
 #ifdef TARGET_DISABLE_TRIPLE_BUFFERING
 #warning "disabling triple buffering"
     mSurfaceFlingerConsumer->setDefaultMaxBufferCount(2);
@@ -275,6 +279,12 @@ Rect Layer::getContentCrop() const {
     return crop;
 }
 
+sp<SurfaceFlingerConsumer> Layer::getSurfaceFlingerConsumer()
+{
+    return mSurfaceFlingerConsumer;
+}
+
+
 static Rect reduce(const Rect& win, const Region& exclude) {
     if (CC_LIKELY(exclude.isEmpty())) {
         return win;
@@ -393,6 +403,7 @@ void Layer::setGeometry(
     frame.intersect(hw->getViewport(), &frame);
     const Transform& tr(hw->getTransform());
     layer.setFrame(tr.transform(frame));
+    mDisplayFrame = tr.transform(frame);
     layer.setCrop(computeCrop(hw));
     layer.setPlaneAlpha(s.alpha);
 
@@ -579,6 +590,7 @@ void Layer::onDraw(const sp<const DisplayDevice>& hw, const Region& clip) const
         }
 
         // Set things up for texturing.
+        mTexture.init(Texture::TEXTURE_EXTERNAL, mTextureName);
         mTexture.setDimensions(mActiveBuffer->getWidth(), mActiveBuffer->getHeight());
         mTexture.setFiltering(useFiltering);
         mTexture.setMatrix(textureMatrix);
@@ -587,6 +599,15 @@ void Layer::onDraw(const sp<const DisplayDevice>& hw, const Region& clip) const
     } else {
         engine.setupLayerBlackedOut();
     }
+    drawWithOpenGL(hw, clip);
+    engine.disableTexturing();
+}
+
+void Layer::setLayerTexture(const sp<const DisplayDevice>& hw, const Region& clip)
+{
+    RenderEngine& engine(mFlinger->getRenderEngine());
+    mTexture.init(Texture::TEXTURE_EXTERNAL, mTextureName2);
+    engine.setupLayerTexturing(mTexture);
     drawWithOpenGL(hw, clip);
     engine.disableTexturing();
 }
@@ -655,6 +676,16 @@ void Layer::setFiltering(bool filtering) {
 bool Layer::getFiltering() const {
     return mFiltering;
 }
+
+PixelFormat Layer::getFormat() const {
+    if (mActiveBuffer == 0) {
+        ALOGE("mActiveBuffer is NULL");
+        return 0;
+    }
+
+    return mActiveBuffer->format;
+}
+
 
 // As documented in libhardware header, formats in the range
 // 0x100 - 0x1FF are specific to the HAL implementation, and

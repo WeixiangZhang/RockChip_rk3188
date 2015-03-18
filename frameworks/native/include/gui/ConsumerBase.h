@@ -202,6 +202,7 @@ protected:
     // be replaced if the requested buffer usage or geometry differs from that
     // of the buffer allocated to a slot.
     Slot mSlots[BufferQueue::NUM_BUFFER_SLOTS];
+    Slot mSlotsEVIS[BufferQueue::NUM_BUFFER_SLOTS];
 
     // mAbandoned indicates that the BufferQueue will no longer be used to
     // consume images buffers pushed to it using the IGraphicBufferProducer
